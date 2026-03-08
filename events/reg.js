@@ -8,40 +8,31 @@ import {
   TextInputStyle,
   ActionRowBuilder,
 } from "discord.js";
+import { appConfig } from "../config/appConfig.js";
+import { readJsonSafe, writeJsonAtomic } from "../lib/jsonStore.js";
 
-/* =========================
-   USTAW TUTAJ ID
-   ========================= */
-const RULES_CHANNEL_ID = "1443727056281276547";
-const VERIFIED_ROLE_ID = "1443974036643385526";
+const RULES_CHANNEL_ID = appConfig.ids.rulesChannelId;
+const VERIFIED_ROLE_ID = appConfig.ids.verifiedRoleId;
 const BANNER_URL = "https://i.imgur.com/mW5CIsC.png";
-
-// Twoje custom emoji:
 const VERIFY_EMOJI = { id: "1476401105985605824", name: "akcept" };
 
-/* =========================
-   PERSIST MESSAGE ID
-   ========================= */
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "rules-compv2-message.json");
+const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 
 function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, JSON.stringify({}), "utf8");
+  if (!fs.existsSync(DB_PATH)) writeJsonAtomic(DB_PATH, {});
 }
 
 function readDb() {
   ensureDb();
-  try {
-    return JSON.parse(fs.readFileSync(DB_PATH, "utf8")) || {};
-  } catch {
-    return {};
-  }
+  return readJsonSafe(DB_PATH, {});
 }
 
 function writeDb(db) {
   ensureDb();
-  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf8");
+  writeJsonAtomic(DB_PATH, db);
 }
 
 function getSavedMessageId(guildId) {
@@ -55,28 +46,21 @@ function setSavedMessageId(guildId, messageId) {
   writeDb(db);
 }
 
-/* =========================
-   UI HELPERS
-   ========================= */
 function parseAccentColor(value) {
   if (typeof value === "string") return parseInt(value.replace("#", ""), 16);
   if (typeof value === "number") return value;
-  return 0xFFFFFF;
+  return 0xffffff;
 }
 
-// BIAŁY MOTYW dla ephemeral
 function buildEphemeralPanel({ title, text, bannerUrl }) {
   return {
     flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
     components: [
       {
-        type: 17, // CONTAINER
-        accent_color: 0xFFFFFF,
+        type: 17,
+        accent_color: 0xffffff,
         components: [
-          {
-            type: 12, // MEDIA GALLERY
-            items: [{ media: { url: bannerUrl } }],
-          },
+          { type: 12, items: [{ media: { url: bannerUrl } }] },
           { type: 10, content: `# ${title}` },
           { type: 14, divider: true, spacing: 1 },
           { type: 10, content: text },
@@ -87,38 +71,28 @@ function buildEphemeralPanel({ title, text, bannerUrl }) {
 }
 
 function buildVerificationMessage({ accentColor, bannerUrl }) {
-  const body =
-    `Zweryfikuj swoje konto aby uzyskać pełny dostęp do serwera.\n` +
-    `Klikając przycisk weryfikacji, wyświetli Ci się okienko z zadaniem.\n` +
-    `Po poprawnym rozwiązaniu zadania otrzymasz rolę, która umożliwi korzystanie ze wszystkich kanałów na serwerze.\n` +
-    `W razie pytań lub problemów, skontaktuj się z naszym zespołem.`;
-
-  const ctaLine = `Dokończ weryfikację jednym kliknięciem.`;
-
   return {
     flags: MessageFlags.IsComponentsV2,
     components: [
       {
-        type: 17, // CONTAINER
+        type: 17,
         accent_color: accentColor,
         components: [
-          {
-            type: 12, // MEDIA GALLERY
-            items: [{ media: { url: bannerUrl } }],
-          },
+          { type: 12, items: [{ media: { url: bannerUrl } }] },
           { type: 10, content: "# ODBLOKOWANIE DOSTĘPU" },
           { type: 14, divider: true, spacing: 1 },
-
-          { type: 10, content: body },
-          { type: 14, divider: true, spacing: 1 },
-
-          // CTA: tekst po lewej + przycisk po prawej
           {
-            type: 9, // SECTION
-            components: [{ type: 10, content: ctaLine }],
+            type: 10,
+            content:
+              "Zweryfikuj konto, aby uzyskać pełny dostęp. Po kliknięciu przycisku dostaniesz krótkie zadanie matematyczne.",
+          },
+          { type: 14, divider: true, spacing: 1 },
+          {
+            type: 9,
+            components: [{ type: 10, content: "Dokończ weryfikację jednym kliknięciem." }],
             accessory: {
-              type: 2, // BUTTON
-              style: 2, // SECONDARY
+              type: 2,
+              style: 2,
               custom_id: "verify_open_modal",
               label: "Potwierdź dostęp",
               emoji: VERIFY_EMOJI,
@@ -130,18 +104,20 @@ function buildVerificationMessage({ accentColor, bannerUrl }) {
   };
 }
 
-function buildVerifyModal() {
-  const modal = new ModalBuilder()
-    .setCustomId("verify_modal_submit")
-    .setTitle("Weryfikacja");
+function makeChallenge() {
+  const a = Math.floor(Math.random() * 8) + 2;
+  const b = Math.floor(Math.random() * 8) + 2;
+  return { prompt: `Zadanie: ile to jest ${a} + ${b} ?`, answer: String(a + b) };
+}
 
+function buildVerifyModal(prompt) {
+  const modal = new ModalBuilder().setCustomId("verify_modal_submit").setTitle("Weryfikacja");
   const input = new TextInputBuilder()
     .setCustomId("verify_answer")
-    .setLabel("Zadanie: ile to jest 2 + 3 ?")
+    .setLabel(prompt)
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
     .setPlaceholder("Wpisz wynik...");
-
   modal.addComponents(new ActionRowBuilder().addComponents(input));
   return modal;
 }
@@ -153,133 +129,91 @@ export default {
   async execute(client, settings) {
     try {
       if (!RULES_CHANNEL_ID || !VERIFIED_ROLE_ID) {
-        console.warn("⚠️ Ustaw RULES_CHANNEL_ID oraz VERIFIED_ROLE_ID.");
+        console.warn("⚠️ Brak RULES_CHANNEL_ID lub VERIFIED_ROLE_ID w konfiguracji.");
         return;
       }
 
       const bannerToUse = settings?.rulesBannerUrl || BANNER_URL;
+      client.verifyChallenges ??= new Map();
 
-      // zabezpieczenie przed podwójnym listenerem (hot-reload)
       if (!client.__verifyRulesListenerAttached) {
         client.__verifyRulesListenerAttached = true;
 
         client.on(Events.InteractionCreate, async (interaction) => {
           try {
-            // Klik przycisku => pokaż modal
-            if (interaction.isButton()) {
-              if (!interaction.inGuild()) return;
-              if (interaction.customId !== "verify_open_modal") return;
-
-              await interaction.showModal(buildVerifyModal());
+            if (interaction.isButton() && interaction.inGuild() && interaction.customId === "verify_open_modal") {
+              const challenge = makeChallenge();
+              client.verifyChallenges.set(interaction.user.id, {
+                answer: challenge.answer,
+                expiresAt: Date.now() + CHALLENGE_TTL_MS,
+                tries: 0,
+              });
+              await interaction.showModal(buildVerifyModal(challenge.prompt));
               return;
             }
 
-            // Submit modala => sprawdź odpowiedź + nadaj rolę
-            if (interaction.isModalSubmit()) {
-              if (!interaction.inGuild()) return;
-              if (interaction.customId !== "verify_modal_submit") return;
+            if (!interaction.isModalSubmit() || !interaction.inGuild() || interaction.customId !== "verify_modal_submit") return;
 
-              const answer = interaction.fields.getTextInputValue("verify_answer")?.trim();
+            const state = client.verifyChallenges.get(interaction.user.id);
+            if (!state || state.expiresAt < Date.now()) {
+              await interaction.reply(
+                buildEphemeralPanel({
+                  title: "ODBLOKOWANIE DOSTĘPU",
+                  text: "Sesja weryfikacji wygasła. Kliknij przycisk ponownie.",
+                  bannerUrl: bannerToUse,
+                })
+              );
+              return;
+            }
 
-              if (answer !== "5") {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPU",
-                    text: "Zła odpowiedź. Spróbuj ponownie.",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              const role = interaction.guild.roles.cache.get(VERIFIED_ROLE_ID);
-              if (!role) {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPU",
-                    text: "Nie mogę znaleźć roli weryfikacji.",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              // uprawnienia bota
-              const me = interaction.guild.members.me;
-              if (!me) {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPUA",
-                    text: "Nie mogę odczytać danych bota na serwerze.",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              if (!me.permissions.has("ManageRoles")) {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPU",
-                    text: "Bot nie ma uprawnienia **Zarządzanie rolami** (Manage Roles).",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              // rola bota musi być wyżej niż rola weryfikacji
-              if (me.roles.highest.comparePositionTo(role) <= 0) {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPU",
-                    text: "Rola bota jest za nisko — ustaw rolę bota **nad** rolą weryfikacji.",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              const member = interaction.member; // GuildMember
-
-              if (member.roles.cache.has(role.id)) {
-                await interaction.reply(
-                  buildEphemeralPanel({
-                    title: "ODBLOKOWANIE DOSTĘPU",
-                    text: "Twoje konto jest już zweryfikowane. Posiadasz aktywną rolę weryfikacyjną i pełny dostęp do wszystkich kanałów. Jeśli coś nie działa poprawnie, spróbuj odświeżyć aplikację lub skontaktuj się z administracją.",
-                    bannerUrl: bannerToUse,
-                  })
-                );
-                return;
-              }
-
-              await member.roles.add(role, "Passed verification task via modal");
+            const answer = interaction.fields.getTextInputValue("verify_answer")?.trim();
+            if (answer !== state.answer) {
+              state.tries += 1;
+              if (state.tries >= 3) client.verifyChallenges.delete(interaction.user.id);
+              else client.verifyChallenges.set(interaction.user.id, state);
 
               await interaction.reply(
                 buildEphemeralPanel({
                   title: "ODBLOKOWANIE DOSTĘPU",
-                  text: "Weryfikacja zakończona sukcesem! Możesz już swobodnie korzystać ze wszystkich kanałów.",
+                  text: "Zła odpowiedź. Spróbuj ponownie.",
                   bannerUrl: bannerToUse,
                 })
               );
+              return;
             }
+
+            client.verifyChallenges.delete(interaction.user.id);
+
+            const role = interaction.guild.roles.cache.get(VERIFIED_ROLE_ID);
+            if (!role) {
+              await interaction.reply(
+                buildEphemeralPanel({ title: "ODBLOKOWANIE DOSTĘPU", text: "Nie mogę znaleźć roli weryfikacji.", bannerUrl: bannerToUse })
+              );
+              return;
+            }
+
+            const member = interaction.member;
+            if (member.roles.cache.has(role.id)) {
+              await interaction.reply(
+                buildEphemeralPanel({ title: "ODBLOKOWANIE DOSTĘPU", text: "To konto jest już zweryfikowane.", bannerUrl: bannerToUse })
+              );
+              return;
+            }
+
+            await member.roles.add(role, "Passed verification task via modal");
+            await interaction.reply(
+              buildEphemeralPanel({
+                title: "ODBLOKOWANIE DOSTĘPU",
+                text: "Weryfikacja zakończona sukcesem!",
+                bannerUrl: bannerToUse,
+              })
+            );
           } catch (e) {
             console.error("Verification error:", e);
-            try {
-              const payload = buildEphemeralPanel({
-                title: "ODBLOKOWANIE DOSTĘPU",
-                text: "Wystąpił błąd podczas weryfikacji. Spróbuj ponownie za chwilę.",
-                bannerUrl: bannerToUse,
-              });
-
-              if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
-              else await interaction.reply(payload);
-            } catch {}
           }
         });
       }
 
-      // wysyłka wiadomości (bez duplikatów)
       for (const guild of client.guilds.cache.values()) {
         const ch = guild.channels.cache.get(RULES_CHANNEL_ID);
         if (!ch?.isTextBased()) continue;
@@ -290,13 +224,9 @@ export default {
           if (existing) continue;
         }
 
-        const accentColor = parseAccentColor(settings?.headerColor);
-        const payload = buildVerificationMessage({
-          accentColor,
-          bannerUrl: bannerToUse,
-        });
-
-        const msg = await ch.send(payload);
+        const msg = await ch.send(
+          buildVerificationMessage({ accentColor: parseAccentColor(settings?.headerColor), bannerUrl: bannerToUse })
+        );
         setSavedMessageId(guild.id, msg.id);
       }
 

@@ -11,10 +11,11 @@ import {
 } from "discord.js";
 import fs from "node:fs";
 import path from "node:path";
+import { appConfig } from "../config/appConfig.js";
 
 // Kanały
-const ADMIN_CHANNEL_ID = "1476734450548342956"; // log + decyzje admina
-const PUBLIC_CHANNEL_ID = "1476732953940852860"; // publikacja reklamy dla wszystkich
+const ADMIN_CHANNEL_ID = appConfig.ids.partnerAdminChannelId || "1476734450548342956"; // log + decyzje admina
+const PUBLIC_CHANNEL_ID = appConfig.ids.partnerPublicChannelId || "1476732953940852860"; // publikacja reklamy dla wszystkich
 
 const BANNER_URL = "https://i.imgur.com/mW5CIsC.png";
 

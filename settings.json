@@ -1,9 +1,16 @@
 {
-  "token": "MTQ0MzY2NjQwNTIwNjY1NTE3Mg.Gq2eGg.HRFIl5y_Ceu0_-8hLfpHELBSkgyxTnrremKETs",
   "clientId": "1443666405206655172",
   "guildId": "1443666220741165168",
   "serverName": "WH!TEcode",
   "headerColor": 16777215,
   "panelMessageId": "",
-  "panelOpinionMessageId": ""
+  "panelOpinionMessageId": "",
+  "devId": "1418289596457812088",
+  "konkursChannelId": "1474209707253301368",
+  "ticketPanelChannelId": "1443986123079815198",
+  "opinionPanelChannelId": "1456964345811439759",
+  "opinionLogChannelId": "1456964345811439759",
+  "partnerPanelChannelId": "1476731890026414081",
+  "partnerAdminChannelId": "1476734450548342956",
+  "partnerPublicChannelId": "1476732953940852860"
 }

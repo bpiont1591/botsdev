@@ -1,26 +1,24 @@
 import { REST, Routes } from "discord.js";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import { appConfig, requireDiscordToken } from "./config/appConfig.js";
 
-const __dirname = path.resolve();
+const token = requireDiscordToken();
+const clientId = appConfig.discord.clientId;
+const guildId = appConfig.discord.guildId;
 
-const config = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "settings.json"), "utf8")
-);
+if (!clientId || !guildId) {
+  throw new Error("Brak DISCORD_CLIENT_ID lub DISCORD_GUILD_ID.");
+}
 
 const commands = [];
-const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
+const commandFiles = fs.readdirSync("./commands").filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
   const command = await import(`./commands/${file}`);
   commands.push(command.default.data.toJSON());
 }
 
-const rest = new REST({ version: "10" }).setToken(config.token);
+const rest = new REST({ version: "10" }).setToken(token);
 
-await rest.put(
-  Routes.applicationGuildCommands(config.clientId, config.guildId),
-  { body: commands }
-);
-
+await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
 console.log("✅ Slash commands zarejestrowane.");

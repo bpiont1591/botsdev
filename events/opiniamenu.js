@@ -1,10 +1,12 @@
 import { Events } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { appConfig } from "../config/appConfig.js";
+import { writeJsonAtomic } from "../lib/jsonStore.js";
 
 const settingsPath = path.resolve("./settings.json");
 
-const PANEL_CHANNEL_ID = "1456964345811439759";
+const PANEL_CHANNEL_ID = appConfig.ids.opinionPanelChannelId || "1456964345811439759";
 
 function loadSettings() {
   try {
@@ -88,7 +90,7 @@ async function sendOpinionPanel(client) {
 
   // zapisz ID
   settings.panelOpinionMessageId = sent.id;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+  writeJsonAtomic(settingsPath, settings);
 
   return sent;
 }

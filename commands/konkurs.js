@@ -1,39 +1,22 @@
-import { 
-  SlashCommandBuilder, 
-  PermissionFlagsBits, 
-  MessageFlags 
-} from "discord.js";
-
-const ALLOWED_CHANNEL_ID = "1474209707253301368"; // <- TU WPISZ ID KANAŁU
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { appConfig } from "../config/appConfig.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("konkurs")
     .setDescription("Tworzy nowy konkurs")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addStringOption(option =>
-      option.setName("nazwa")
-        .setDescription("Nazwa konkursu")
-        .setRequired(true)
-    )
-    .addIntegerOption(option =>
-      option.setName("czas")
-        .setDescription("Czas trwania w minutach")
-        .setRequired(true)
-    )
-    .addIntegerOption(option =>
-      option.setName("wygrani")
-        .setDescription("Ilość zwycięzców")
-        .setRequired(true)
-    ),
+    .addStringOption((option) => option.setName("nazwa").setDescription("Nazwa konkursu").setRequired(true))
+    .addIntegerOption((option) => option.setName("czas").setDescription("Czas trwania w minutach").setRequired(true))
+    .addIntegerOption((option) => option.setName("wygrani").setDescription("Ilość zwycięzców").setRequired(true)),
 
   async execute(interaction) {
+    const allowedChannelId = appConfig.ids.konkursChannelId;
 
-    // 🔒 BLOKADA KANAŁU
-    if (interaction.channel.id !== ALLOWED_CHANNEL_ID) {
+    if (allowedChannelId && interaction.channel.id !== allowedChannelId) {
       return interaction.reply({
         content: "❌ Ta komenda może być używana tylko na wyznaczonym kanale konkursowym!",
-        flags: MessageFlags.Ephemeral
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -50,14 +33,14 @@ export default {
       czas,
       wygrani,
       uczestnicy: new Set(),
-      channelId: interaction.channel.id
+      channelId: interaction.channel.id,
     });
 
     await interaction.reply({
       content: `✅ Konkurs **${nazwa}** został uruchomiony!`,
-      flags: MessageFlags.Ephemeral
+      flags: MessageFlags.Ephemeral,
     });
 
     interaction.client.emit("startContestPanel", contestId);
-  }
+  },
 };
