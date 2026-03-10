@@ -1,5 +1,8 @@
 import path from "node:path";
 import { readJsonSafe } from "../lib/jsonStore.js";
+import { loadEnvFile } from "../lib/loadEnv.js";
+
+loadEnvFile();
 
 const settingsPath = path.resolve("./settings.json");
 const channelsPath = path.resolve("./channels.json");
@@ -9,7 +12,7 @@ const channels = readJsonSafe(channelsPath, {});
 
 export const appConfig = {
   discord: {
-    token: process.env.DISCORD_TOKEN,
+    token: process.env.DISCORD_TOKEN || process.env.TOKEN,
     clientId: process.env.DISCORD_CLIENT_ID || settings.clientId,
     guildId: process.env.DISCORD_GUILD_ID || settings.guildId,
   },
@@ -29,7 +32,7 @@ export const appConfig = {
 
 export function requireDiscordToken() {
   if (!appConfig.discord.token) {
-    throw new Error("Brak DISCORD_TOKEN w zmiennych środowiskowych.");
+    throw new Error("Brak tokena. Ustaw DISCORD_TOKEN (lub legacy TOKEN) w zmiennych środowiskowych / .env.");
   }
   return appConfig.discord.token;
 }
