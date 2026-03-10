@@ -8,11 +8,13 @@ import {
 } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { appConfig } from "../config/appConfig.js";
+import { writeJsonAtomic } from "../lib/jsonStore.js";
 
 const settingsPath = path.resolve("./settings.json");
 
-const PANEL_CHANNEL_ID = "1456964345811439759";
-const OPINION_LOG_CHANNEL_ID = "1456964345811439759";
+const PANEL_CHANNEL_ID = appConfig.ids.opinionPanelChannelId || "1456964345811439759";
+const OPINION_LOG_CHANNEL_ID = appConfig.ids.opinionLogChannelId || PANEL_CHANNEL_ID;
 
 const BANNER_URL = "https://i.imgur.com/mW5CIsC.png";
 const WHITE = 0xffffff;
@@ -26,7 +28,7 @@ function loadSettings() {
 }
 
 function saveSettings(settings) {
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+  writeJsonAtomic(settingsPath, settings);
 }
 
 function parseAccentColor(value) {

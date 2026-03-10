@@ -1,8 +1,9 @@
 import { Events, MessageFlags } from "discord.js";
 import fs from "node:fs";
 import path from "node:path";
+import { appConfig } from "../config/appConfig.js";
 
-const PANEL_CHANNEL_ID = "1476731890026414081";
+const PANEL_CHANNEL_ID = appConfig.ids.partnerPanelChannelId || "1476731890026414081";
 const BANNER_URL = "https://i.imgur.com/mW5CIsC.png";
 
 // Emotki

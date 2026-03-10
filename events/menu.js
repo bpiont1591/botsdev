@@ -1,9 +1,11 @@
 import { Events, MessageFlags, ButtonBuilder, ButtonStyle } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { appConfig } from "../config/appConfig.js";
+import { writeJsonAtomic } from "../lib/jsonStore.js";
 
 const settingsPath = path.resolve("./settings.json");
-const PANEL_CHANNEL_ID = "1443986123079815198";
+const PANEL_CHANNEL_ID = appConfig.ids.ticketPanelChannelId;
 
 function loadSettings() {
   try {
@@ -14,7 +16,7 @@ function loadSettings() {
 }
 
 function saveSettings(settings) {
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+  writeJsonAtomic(settingsPath, settings);
 }
 
 export default {
