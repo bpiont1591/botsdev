@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Opinie o bocie</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Opinie o bocie</h1>
+
+      <section class="card">
+        <h2>Dodaj opinię</h2>
+        <form id="opinion-form">
+          <label>
+            Nick
+            <input name="author" maxlength="40" required />
+          </label>
+
+          <label>
+            Ocena (1-5)
+            <input name="rating" type="number" min="1" max="5" required />
+          </label>
+
+          <label>
+            Treść opinii
+            <textarea name="content" rows="4" maxlength="500" required></textarea>
+          </label>
+
+          <button type="submit">Wyślij opinię</button>
+          <p id="status"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Lista opinii</h2>
+        <div id="opinions"></div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

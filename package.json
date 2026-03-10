@@ -5,7 +5,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "start:bot": "node index.js",
+    "start:web": "node web/opinionsServer.js"
   },
   "dependencies": {
     "discord.js": "^14.25.1"

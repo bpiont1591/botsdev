@@ -1,6 +1,6 @@
-# Discord bot (modułowy)
+# Discord bot + strona opinii
 
-## Szybki start
+## Szybki start (bot)
 1. Zainstaluj zależności:
 ```bash
 npm i
@@ -10,18 +10,30 @@ npm i
 ```bash
 npm start
 ```
-4. Zarejestruj slash-komendy:
+
+## Strona opinii (web)
+Uruchom lokalny serwer strony opinii:
 ```bash
-node deploy-commands.js
+npm run start:web
 ```
 
-## Konfiguracja
-- Sekrety (token) trzymaj tylko w `.env`.
-- Stałe ID możesz trzymać w `.env` lub `settings.json` / `channels.json`.
-- Centralna konfiguracja jest w `config/appConfig.js`.
+Strona będzie dostępna pod adresem:
+- `http://localhost:3000`
+
+### Co działa
+- wyświetlanie opinii z bazy plikowej `data/opinions.json`
+- testowa opinia widoczna od razu po starcie
+- formularz dodawania opinii z zapisem do bazy i odświeżeniem listy
+
+## SQL do klasycznej bazy
+Jeśli chcesz użyć relacyjnej bazy (np. SQLite/Postgres), gotowy skrypt masz w:
+- `db/opinions.sql`
 
 ## Struktura
 - `commands/` — komendy slash
 - `events/` — eventy Discord
 - `lib/jsonStore.js` — bezpieczny odczyt i zapis JSON (atomiczny)
+- `lib/loadEnv.js` — proste ładowanie `.env`
 - `config/appConfig.js` — scentralizowany config
+- `web/opinionsServer.js` — backend HTTP dla opinii
+- `web/public/` — frontend strony opinii
